@@ -1,0 +1,26 @@
+# 数据与训练产物
+dataset/
+raw_data/
+data/
+logs/
+output/
+*.pth
+train.txt
+test.txt
+classes.json
+
+# 运行时临时文件
+images/history/
+images/tmp_up.*
+images/show.png
+images/target.png
+__pycache__/
+*.pyc
+
+# 环境与 IDE
+.idea/
+.vscode/
+.venv/
+venv/
+.env
+*.log
