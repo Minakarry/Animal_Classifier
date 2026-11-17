@@ -1,4 +1,4 @@
-"""项目全局配置：类别、路径、预处理参数等。"""
+"""Global project configuration: classes, paths, hyperparameters."""
 from __future__ import annotations
 
 import json
@@ -6,8 +6,8 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
 
-# Animals-10：10 类常见动物（非宠物品种）
-# 来源: https://www.kaggle.com/datasets/alessiocorrado99/animals10
+# Animals-10: 10 common animal categories
+# Source: https://www.kaggle.com/datasets/alessiocorrado99/animals10
 _DEFAULT_CLASS_NAMES_EN = [
     "butterfly",
     "cat",
@@ -36,21 +36,21 @@ _DEFAULT_CLASS_NAMES_ZH = [
 
 ZH_NAME_MAP = dict(zip(_DEFAULT_CLASS_NAMES_EN, _DEFAULT_CLASS_NAMES_ZH))
 
-# 各类简介（按中文类名索引）
+# English descriptions keyed by display name (Title Case)
 CLASS_DESCRIPTIONS = {
-    "蝴蝶": "昆虫纲鳞翅目。翅膀覆盖鳞粉，多数靠花蜜为生，是常见的传粉者。",
-    "猫": "小型食肉哺乳动物，行动敏捷、夜视出色，是最常见的家养伴侣动物之一。",
-    "鸡": "家禽，鸟纲雉科。善走少飞，广泛养殖，可为人类提供蛋和肉。",
-    "牛": "大型反刍家畜，体型壮实。常用于产奶、产肉，也是传统农业役畜。",
-    "狗": "最早被人类驯化的家畜之一，嗅觉灵敏、善于协作，常作伴侣或工作犬。",
-    "象": "现存陆地上体型最大的哺乳动物，长鼻灵活，群居生活，记忆力出色。",
-    "马": "大型草食家畜，四肢修长、奔跑能力强，历史上广泛用于骑乘与运输。",
-    "羊": "反刍草食家畜，群居性强，主要提供羊毛、羊肉和羊奶。",
-    "蜘蛛": "蛛形纲节肢动物，大多有八足，能结网捕猎，是生态系统中的重要捕食者。",
-    "松鼠": "啮齿目松鼠科小动物，尾毛蓬松，擅爬树，常以坚果和种子为食。",
+    "Butterfly": "An insect of the order Lepidoptera. Its wings are covered with scales; most species feed on nectar and act as pollinators.",
+    "Cat": "A small carnivorous mammal that is agile and has excellent night vision. One of the most common companion animals.",
+    "Chicken": "A domesticated bird of the pheasant family. It is widely farmed and provides eggs and meat.",
+    "Cow": "A large ruminant livestock animal, commonly raised for milk and meat, and historically used as a draft animal.",
+    "Dog": "One of the earliest domesticated animals, with a keen sense of smell and strong cooperation ability; often kept as a companion or working animal.",
+    "Elephant": "The largest living land mammal, with a flexible trunk and strong memory; typically lives in social groups.",
+    "Horse": "A large herbivorous livestock animal with strong running ability; historically used for riding and transport.",
+    "Sheep": "A ruminant livestock animal that lives in flocks and provides wool, meat, and milk.",
+    "Spider": "An arachnid, usually with eight legs; many species spin webs to catch prey and play an important role in ecosystems.",
+    "Squirrel": "A small rodent with a bushy tail; skilled at climbing trees and often feeds on nuts and seeds.",
 }
 
-# 原始 Animals-10 意大利语目录名 -> 英文标准名
+# Original Animals-10 Italian folder names -> English
 ITALIAN_TO_EN = {
     "farfalla": "butterfly",
     "gatto": "cat",
@@ -64,7 +64,6 @@ ITALIAN_TO_EN = {
     "scoiattolo": "squirrel",
 }
 
-# 数据与模型路径
 DATA_DIR = ROOT / "data"
 RAW_DIR = ROOT / "raw_data"
 OUTPUT_DIR = ROOT / "output"
@@ -73,22 +72,31 @@ TRAIN_LIST = ROOT / "train.txt"
 TEST_LIST = ROOT / "test.txt"
 CLASSES_FILE = ROOT / "classes.json"
 
-# 训练超参数
 IMG_SIZE = 224
 BATCH_SIZE = 32
 EPOCHS = 30
 LEARNING_RATE = 1e-4
 TRAIN_RATIO = 0.9
+SEED = 42
+CONFIDENCE_THRESHOLD = 0.50  # below this → uncertain / low-confidence warning
+EARLY_STOP_PATIENCE = 8
 
-# ImageNet 预训练常用归一化（配合 ResNet 预训练权重）
 MEAN = [0.485, 0.456, 0.406]
 STD = [0.229, 0.224, 0.225]
+
+FIGURES_DIR = OUTPUT_DIR / "figures"
+METRICS_PATH = OUTPUT_DIR / "metrics.json"
+COMPARE_PATH = OUTPUT_DIR / "compare_results.json"
 
 IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".bmp", ".webp"}
 
 
+def _to_display_name(name_en: str) -> str:
+    return name_en.replace("_", " ").title()
+
+
 def load_class_names() -> tuple[list[str], list[str]]:
-    """优先读取 classes.json，保证与下载脚本导出的目录一致。"""
+    """Load English folder names and Chinese labels from classes.json if present."""
     if CLASSES_FILE.exists():
         data = json.loads(CLASSES_FILE.read_text(encoding="utf-8"))
         names_en = [item["en"] for item in data]
@@ -100,9 +108,13 @@ def load_class_names() -> tuple[list[str], list[str]]:
     return list(_DEFAULT_CLASS_NAMES_EN), list(_DEFAULT_CLASS_NAMES_ZH)
 
 
-CLASS_NAMES_EN, CLASS_NAMES = load_class_names()
+CLASS_NAMES_EN, CLASS_NAMES_ZH = load_class_names()
+# UI / prediction display names (English, Title Case)
+CLASS_NAMES = [_to_display_name(n) for n in CLASS_NAMES_EN]
 NUM_CLASSES = len(CLASS_NAMES)
 
 
-def get_class_description(name_zh: str) -> str:
-    return CLASS_DESCRIPTIONS.get(name_zh, "暂无该类简介。")
+def get_class_description(name: str) -> str:
+    """Look up description by English display name (or raw English folder name)."""
+    key = _to_display_name(name) if name and name[0].islower() else name
+    return CLASS_DESCRIPTIONS.get(key, CLASS_DESCRIPTIONS.get(name, "No description available."))

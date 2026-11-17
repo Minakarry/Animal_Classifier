@@ -1,261 +1,158 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>动物识别系统</title>
+  <title>Animal Recognition System</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Noto+Sans+SC:wght@400;500;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
   <style>
     :root {
-      --bg: #10241c;
-      --panel: #ffffff;
-      --line: #ffffff;
-      --text: #f3eee4;
-      --muted: #c5d2c8;
-      --ink: #1f2933;
-      --ink-muted: #5b6770;
-      --accent: #e7c56a;
-      --accent-hover: #f0d484;
-      --danger: #ffb4a8;
+      --text: #f3eee4; --muted: #c5d2c8; --ink: #1f2933; --ink-muted: #5b6770;
+      --accent: #e7c56a; --accent-hover: #f0d484; --danger: #ffb4a8; --warn-bg: #ffe2b8; --warn-ink: #7a2e0e;
     }
     * { box-sizing: border-box; }
     body {
-      margin: 0;
-      min-height: 100vh;
-      color: var(--text);
-      font-family: "Noto Sans SC", sans-serif;
+      margin: 0; min-height: 100vh; color: var(--text);
+      font-family: "DM Sans", "Segoe UI", sans-serif;
       background:
         linear-gradient(rgba(10, 22, 16, 0.62), rgba(10, 22, 16, 0.72)),
         url("/static/background.jpg") center / cover no-repeat fixed;
     }
     .page {
-      width: min(1180px, calc(100% - 40px));
-      margin: 0 auto;
-      padding: 48px 0 64px;
-      display: grid;
-      grid-template-columns: 1.15fr 0.85fr;
-      gap: 40px;
-      align-items: start;
-      min-height: calc(100vh - 32px);
+      width: min(1200px, calc(100% - 40px)); margin: 0 auto; padding: 40px 0 56px;
+      display: grid; grid-template-columns: 1.15fr 0.85fr; gap: 28px; align-items: start;
     }
-    @media (max-width: 860px) {
-      .page { grid-template-columns: 1fr; padding-top: 28px; }
-    }
-    .brand {
-      margin: 0 0 8px;
-      font-family: "Fraunces", "Noto Sans SC", serif;
-      font-size: clamp(2.6rem, 5vw, 3.6rem);
-      font-weight: 700;
-    }
-    .sub {
-      margin: 0 0 28px;
-      color: var(--muted);
-      font-size: 1.1rem;
-      line-height: 1.6;
-    }
+    @media (max-width: 900px) { .page { grid-template-columns: 1fr; } }
+    .brand { margin: 0 0 8px; font-family: "Fraunces", serif; font-size: clamp(2.4rem, 5vw, 3.2rem); font-weight: 700; }
+    .sub { margin: 0 0 22px; color: var(--muted); font-size: 1.05rem; line-height: 1.6; }
     .stage {
-      background: #ffffff;
-      border: 2px solid #ffffff;
-      border-radius: 10px;
-      min-height: 460px;
-      display: grid;
-      place-items: center;
-      overflow: hidden;
-      cursor: pointer;
+      background: #fff; border: 2px solid #fff; border-radius: 10px; min-height: 320px;
+      display: grid; place-items: center; overflow: hidden; cursor: pointer;
     }
-    .stage:hover { box-shadow: 0 0 0 2px rgba(255,255,255,0.35); }
     .stage.dragover { outline: 2px solid var(--accent); }
-    .hint {
-      text-align: center;
-      color: var(--ink-muted);
-      font-size: 1.15rem;
-      padding: 24px;
-      line-height: 1.7;
+    .hint { text-align: center; color: var(--ink-muted); font-size: 1.1rem; padding: 24px; line-height: 1.7; }
+    #preview, #cam { display: none; width: 100%; max-height: 360px; object-fit: contain; background: #fff; }
+    .visuals { display: grid; grid-template-columns: 1.2fr 0.8fr; gap: 12px; }
+    @media (max-width: 700px) { .visuals { grid-template-columns: 1fr; } }
+    .cam-box {
+      background: #fff; border: 2px solid #fff; border-radius: 10px; min-height: 220px;
+      display: grid; place-items: center; overflow: hidden; color: var(--ink-muted);
     }
-    #preview {
-      display: none;
-      width: 100%;
-      max-height: 520px;
-      object-fit: contain;
-      background: #ffffff;
-    }
-    .actions {
-      margin-top: 18px;
-      display: flex;
-      flex-wrap: wrap;
-      gap: 12px;
-    }
+    .cam-title { margin: 0 0 8px; color: var(--accent); font-size: 1rem; }
+    .actions { margin-top: 14px; display: flex; flex-wrap: wrap; gap: 10px; }
     .btn {
-      appearance: none;
-      border: 0;
-      border-radius: 8px;
-      background: var(--accent);
-      color: #10241c;
-      font: inherit;
-      font-size: 1.1rem;
-      font-weight: 700;
-      padding: 14px 22px;
-      cursor: pointer;
+      appearance: none; border: 0; border-radius: 8px; background: var(--accent); color: #10241c;
+      font: inherit; font-size: 1.05rem; font-weight: 700; padding: 12px 18px; cursor: pointer;
     }
     .btn:hover { background: var(--accent-hover); }
     .btn:disabled { opacity: 0.55; cursor: not-allowed; }
-    .btn-ghost {
-      background: transparent;
-      color: #fff;
-      border: 1px solid #fff;
-    }
-    .btn-ghost:hover { background: rgba(255,255,255,0.12); }
-    .btn-danger {
-      background: transparent;
-      color: var(--danger);
-      border: 1px solid var(--danger);
-      font-size: 0.95rem;
-      padding: 10px 14px;
-    }
-    .btn-danger:hover { background: rgba(255,120,100,0.16); }
+    .btn-ghost { background: transparent; color: #fff; border: 1px solid #fff; }
+    .btn-danger { background: transparent; color: var(--danger); border: 1px solid var(--danger); font-size: 0.92rem; padding: 9px 12px; }
     .file { display: none; }
-    .status {
-      margin-top: 12px;
-      color: var(--muted);
-      font-size: 1rem;
-      min-height: 1.4em;
-    }
+    .status { margin-top: 10px; color: var(--muted); min-height: 1.3em; }
     .status.error { color: #ff8f82; }
-
-    .result-title, .history-title {
-      margin: 0 0 10px;
-      color: var(--accent);
-      font-size: 1.15rem;
-    }
+    .result-title, .history-title, .top-title { margin: 0 0 8px; color: var(--accent); font-size: 1.1rem; }
     .result-name {
-      margin: 0;
-      font-family: "Fraunces", "Noto Sans SC", serif;
-      font-size: clamp(3rem, 7vw, 4.2rem);
-      font-weight: 700;
-      color: var(--accent);
-      line-height: 1.1;
-      min-height: 1.1em;
+      margin: 0; font-family: "Fraunces", serif; font-size: clamp(2.4rem, 6vw, 3.6rem);
+      font-weight: 700; color: var(--accent); line-height: 1.1; min-height: 1.1em;
     }
-    .result-conf {
-      margin: 14px 0 0;
-      font-size: 1.4rem;
-      min-height: 1.4em;
+    .result-conf { margin: 10px 0 0; font-size: 1.25rem; min-height: 1.3em; }
+    .warn {
+      display: none; margin-top: 10px; background: var(--warn-bg); color: var(--warn-ink);
+      border-radius: 8px; padding: 10px 12px; font-size: 0.95rem; line-height: 1.5;
     }
+    .warn.show { display: block; }
     .result-desc {
-      margin: 14px 0 0;
-      color: var(--ink);
-      font-size: 1.05rem;
-      line-height: 1.7;
-      min-height: 3.2em;
-      border: 1px solid #fff;
-      border-radius: 8px;
-      padding: 12px;
-      background: #ffffff;
+      margin: 12px 0 0; color: var(--ink); font-size: 1rem; line-height: 1.65; min-height: 2.8em;
+      border: 1px solid #fff; border-radius: 8px; padding: 12px; background: #fff;
     }
-    .classes {
-      margin-top: 22px;
-      color: var(--muted);
-      font-size: 0.98rem;
-      line-height: 1.8;
+    .bars { display: grid; gap: 10px; margin-top: 8px; }
+    .bar-row { display: grid; gap: 4px; }
+    .bar-head { display: flex; justify-content: space-between; font-size: 0.92rem; }
+    .bar-track { height: 9px; border-radius: 999px; background: rgba(255,255,255,0.25); overflow: hidden; }
+    .bar-fill {
+      height: 100%; width: 0; border-radius: inherit;
+      background: linear-gradient(90deg, #1f4d3d, #e7c56a);
+      transition: width 0.45s cubic-bezier(.2,.8,.2,1);
     }
-    .history-tools {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-      margin: 10px 0 12px;
-    }
-    .history {
-      list-style: none;
-      margin: 0;
-      padding: 0;
-      display: grid;
-      gap: 8px;
-      max-height: 280px;
-      overflow: auto;
-    }
+    .classes { margin-top: 16px; color: var(--muted); font-size: 0.95rem; line-height: 1.7; }
+    .history-tools { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0 10px; }
+    .history { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; max-height: 240px; overflow: auto; }
     .history li {
-      display: grid;
-      grid-template-columns: 22px 52px 1fr auto auto;
-      gap: 10px;
-      align-items: center;
-      padding: 10px;
-      border-radius: 8px;
-      background: #ffffff;
-      border: 1px solid #ffffff;
-      color: var(--ink);
-      cursor: pointer;
+      display: grid; grid-template-columns: 22px 48px 1fr auto auto; gap: 8px; align-items: center;
+      padding: 8px; border-radius: 8px; background: #fff; color: var(--ink); cursor: pointer;
     }
     .history li:hover { background: #f3f6f4; }
-    .history li.selected { background: #e8f0ec; }
-    .history img {
-      width: 52px;
-      height: 52px;
-      object-fit: cover;
-      border-radius: 6px;
-      border: 1px solid #d9e0dc;
-      background: #f5f5f5;
-    }
-    .history .h-name { font-weight: 700; font-size: 1.05rem; color: var(--ink); }
-    .history .h-meta { color: var(--ink-muted); font-size: 0.88rem; margin-top: 2px; }
+    .history img { width: 48px; height: 48px; object-fit: cover; border-radius: 6px; }
+    .history .h-name { font-weight: 700; }
+    .history .h-meta { color: var(--ink-muted); font-size: 0.82rem; }
     .history .del-one {
-      border: 1px solid #c45b4c;
-      color: #c45b4c;
-      background: #fff;
-      border-radius: 6px;
-      padding: 6px 8px;
-      cursor: pointer;
-      font-size: 0.82rem;
+      border: 1px solid #c45b4c; color: #c45b4c; background: #fff; border-radius: 6px;
+      padding: 5px 7px; cursor: pointer; font-size: 0.78rem;
     }
-    .empty { color: var(--muted); font-size: 0.95rem; }
+    .empty { color: var(--muted); font-size: 0.92rem; }
   </style>
 </head>
 <body>
   <div class="page">
     <section>
-      <h1 class="brand">动物识别</h1>
-      <p class="sub">ResNet18 · Animals-10 · 共 {{ num_classes }} 类<br>整图单类别识别，一张图若有多种动物只会给出一个主类别。</p>
+      <h1 class="brand">Animal Recognition</h1>
+      <p class="sub">ResNet18 · Animals-10 · {{ num_classes }} classes · Top-3 + Grad-CAM<br>
+        Low-confidence warning if below {{ (threshold * 100)|int }}%.</p>
 
-      <div id="stage" class="stage" tabindex="0">
-        <div id="hint" class="hint">点击或拖拽上传图片<br>上传后自动识别</div>
-        <img id="preview" alt="预览">
+      <div class="visuals">
+        <div id="stage" class="stage" tabindex="0">
+          <div id="hint" class="hint">Click or drag an image here<br>Recognition starts automatically</div>
+          <img id="preview" alt="Preview">
+        </div>
+        <div>
+          <p class="cam-title">Grad-CAM</p>
+          <div class="cam-box" id="cam-box">Grad-CAM will appear here<img id="cam" alt="Grad-CAM"></div>
+        </div>
       </div>
 
       <div class="actions">
-        <button id="btn" class="btn" type="button">上传并识别</button>
-        <button id="btn-clear" class="btn btn-ghost" type="button">清除当前识别</button>
+        <button id="btn" class="btn" type="button">Upload &amp; Recognize</button>
+        <button id="btn-clear" class="btn btn-ghost" type="button">Clear Current Result</button>
         <input id="file" class="file" type="file" accept="image/*">
       </div>
       <div id="status" class="status"></div>
     </section>
 
     <aside>
-      <p class="result-title">识别结果</p>
+      <p class="result-title">Recognition Result</p>
       <p id="name" class="result-name">—</p>
-      <p id="conf" class="result-conf">上传图片后自动识别</p>
+      <p id="conf" class="result-conf">Upload an image to recognize automatically</p>
+      <div id="warn" class="warn"></div>
       <p id="desc" class="result-desc"></p>
-      <p class="classes">可识别：{% for c in classes %}{{ c.zh }}{% if not loop.last %}、{% endif %}{% endfor %}</p>
 
-      <p class="history-title">识别历史</p>
+      <p class="top-title">Top-3 Predictions</p>
+      <div id="bars" class="bars"></div>
+
+      <p class="classes">Supported classes: {% for c in classes %}{{ c.en }}{% if not loop.last %}, {% endif %}{% endfor %}</p>
+
+      <p class="history-title">History</p>
       <div class="history-tools">
-        <button id="btn-del-selected" class="btn btn-danger" type="button">删除选中</button>
-        <button id="btn-del-all" class="btn btn-danger" type="button">一键清空</button>
+        <button id="btn-del-selected" class="btn btn-danger" type="button">Delete Selected</button>
+        <button id="btn-del-all" class="btn btn-danger" type="button">Clear All</button>
       </div>
       <ul id="history" class="history"></ul>
-      <p id="history-empty" class="empty">暂无记录</p>
+      <p id="history-empty" class="empty">No records yet</p>
     </aside>
   </div>
 
   <script>
     const DESC_MAP = {
-      {% for c in classes %}"{{ c.zh }}": {{ c.desc|tojson }}{% if not loop.last %},{% endif %}
+      {% for c in classes %}"{{ c.en }}": {{ c.desc|tojson }}{% if not loop.last %},{% endif %}
       {% endfor %}
     };
-
     const stage = document.getElementById('stage');
     const hint = document.getElementById('hint');
     const preview = document.getElementById('preview');
+    const cam = document.getElementById('cam');
+    const camBox = document.getElementById('cam-box');
     const fileInput = document.getElementById('file');
     const btn = document.getElementById('btn');
     const btnClear = document.getElementById('btn-clear');
@@ -264,162 +161,133 @@
     const nameEl = document.getElementById('name');
     const confEl = document.getElementById('conf');
     const descEl = document.getElementById('desc');
+    const warnEl = document.getElementById('warn');
+    const barsEl = document.getElementById('bars');
     const statusEl = document.getElementById('status');
     const historyEl = document.getElementById('history');
     const historyEmpty = document.getElementById('history-empty');
-    const HISTORY_KEY = 'animal_sight_history_v3';
+    const HISTORY_KEY = 'animal_sight_history_v5_en';
 
     function setStatus(text, isError = false) {
       statusEl.textContent = text || '';
       statusEl.classList.toggle('error', !!isError);
     }
-
     function showImage(url) {
-      preview.src = url;
-      preview.style.display = 'block';
-      hint.style.display = 'none';
+      preview.src = url; preview.style.display = 'block'; hint.style.display = 'none';
     }
-
+    function showCam(url) {
+      if (!url) return;
+      cam.src = url; cam.style.display = 'block';
+      [...camBox.childNodes].forEach(n => { if (n.nodeType === 3) n.remove(); });
+    }
+    function renderBars(topk) {
+      barsEl.innerHTML = '';
+      (topk || []).forEach((item, i) => {
+        const pct = item.confidence * 100;
+        const row = document.createElement('div');
+        row.className = 'bar-row';
+        row.innerHTML = `<div class="bar-head"><span>${i+1}. ${item.name}</span><span>${pct.toFixed(1)}%</span></div>
+          <div class="bar-track"><div class="bar-fill" style="width:0%"></div></div>`;
+        barsEl.appendChild(row);
+        requestAnimationFrame(() => { row.querySelector('.bar-fill').style.width = pct + '%'; });
+      });
+    }
     function clearCurrent() {
       fileInput.value = '';
-      preview.removeAttribute('src');
-      preview.style.display = 'none';
-      hint.style.display = 'block';
+      preview.removeAttribute('src'); preview.style.display = 'none'; hint.style.display = 'block';
+      cam.removeAttribute('src'); cam.style.display = 'none';
+      camBox.insertBefore(document.createTextNode('Grad-CAM will appear here'), cam);
       nameEl.textContent = '—';
-      confEl.textContent = '上传图片后自动识别';
+      confEl.textContent = 'Upload an image to recognize automatically';
       descEl.textContent = '';
-      setStatus('已清除当前识别');
-      document.querySelectorAll('.history li').forEach(li => li.classList.remove('selected'));
+      warnEl.classList.remove('show'); warnEl.textContent = '';
+      barsEl.innerHTML = '';
+      setStatus('Current result cleared');
     }
-
-    function loadHistory() {
-      try { return JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]'); }
-      catch { return []; }
-    }
-
-    function saveHistory(items) {
-      localStorage.setItem(HISTORY_KEY, JSON.stringify(items.slice(0, 30)));
-    }
-
-    function uid() {
-      return `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-    }
+    function loadHistory() { try { return JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]'); } catch { return []; } }
+    function saveHistory(items) { localStorage.setItem(HISTORY_KEY, JSON.stringify(items.slice(0, 30))); }
+    function uid() { return Date.now() + '_' + Math.random().toString(36).slice(2, 8); }
 
     function renderHistory() {
       const items = loadHistory();
       historyEl.innerHTML = '';
       historyEmpty.style.display = items.length ? 'none' : 'block';
-
       items.forEach((item) => {
         const li = document.createElement('li');
         li.dataset.id = item.id;
+        const mark = item.uncertain ? ' ?' : '';
         li.innerHTML = `
-          <input type="checkbox" class="pick" title="多选">
+          <input type="checkbox" class="pick">
           <img src="${item.preview}" alt="">
-          <div>
-            <div class="h-name">${item.result}</div>
-            <div class="h-meta">${item.time}</div>
-          </div>
-          <div class="h-meta">${(item.confidence * 100).toFixed(1)}%</div>
-          <button class="del-one" type="button">删除</button>
-        `;
-
+          <div><div class="h-name">${item.result}${mark}</div><div class="h-meta">${item.time}</div></div>
+          <div class="h-meta">${(item.confidence*100).toFixed(1)}%</div>
+          <button class="del-one" type="button">Delete</button>`;
         const checkbox = li.querySelector('.pick');
         const delBtn = li.querySelector('.del-one');
-
-        checkbox.addEventListener('click', (e) => e.stopPropagation());
-        checkbox.addEventListener('change', () => {
-          li.classList.toggle('selected', checkbox.checked);
-        });
-
-        delBtn.addEventListener('click', (e) => {
+        checkbox.addEventListener('click', e => e.stopPropagation());
+        delBtn.addEventListener('click', e => {
           e.stopPropagation();
-          const next = loadHistory().filter(x => x.id !== item.id);
-          saveHistory(next);
-          renderHistory();
-          setStatus('已删除 1 条记录');
+          saveHistory(loadHistory().filter(x => x.id !== item.id));
+          renderHistory(); setStatus('Deleted 1 record');
         });
-
         li.addEventListener('click', () => {
           showImage(item.preview);
+          if (item.gradcam) showCam(item.gradcam);
           nameEl.textContent = item.result;
-          confEl.textContent = `置信度  ${(item.confidence * 100).toFixed(1)}%`;
+          confEl.textContent = `Confidence  ${(item.confidence*100).toFixed(1)}%`;
           descEl.textContent = item.description || DESC_MAP[item.result] || '';
-          setStatus('已从历史记录恢复');
+          renderBars(item.topk || []);
+          if (item.uncertain) { warnEl.textContent = item.message || 'Low confidence'; warnEl.classList.add('show'); }
+          else { warnEl.classList.remove('show'); }
+          setStatus('Restored from history');
         });
-
         historyEl.appendChild(li);
       });
     }
 
     function deleteSelected() {
       const checked = [...historyEl.querySelectorAll('.pick:checked')];
-      if (!checked.length) {
-        setStatus('请先勾选要删除的记录', true);
-        return;
-      }
+      if (!checked.length) { setStatus('Please select records to delete', true); return; }
       const ids = new Set(checked.map(el => el.closest('li').dataset.id));
-      const next = loadHistory().filter(x => !ids.has(x.id));
-      saveHistory(next);
-      renderHistory();
-      setStatus(`已删除 ${ids.size} 条记录`);
+      saveHistory(loadHistory().filter(x => !ids.has(x.id)));
+      renderHistory(); setStatus(`Deleted ${ids.size} record(s)`);
     }
-
     function deleteAll() {
-      const items = loadHistory();
-      if (!items.length) return;
-      if (!confirm('确定清空全部识别历史吗？')) return;
-      saveHistory([]);
-      renderHistory();
-      setStatus('已清空全部历史');
+      if (!loadHistory().length) return;
+      if (!confirm('Clear all recognition history?')) return;
+      saveHistory([]); renderHistory(); setStatus('All history cleared');
     }
 
     async function recognize(file) {
-      if (!file || !file.type.startsWith('image/')) {
-        setStatus('请选择有效图片', true);
-        return;
-      }
-
+      if (!file || !file.type.startsWith('image/')) { setStatus('Please choose a valid image file', true); return; }
       showImage(URL.createObjectURL(file));
-      nameEl.textContent = '识别中…';
-      confEl.textContent = '';
-      descEl.textContent = '';
-      setStatus('正在识别…');
-      btn.disabled = true;
-
-      const formData = new FormData();
-      formData.append('file', file);
-
+      nameEl.textContent = 'Recognizing…'; confEl.textContent = ''; descEl.textContent = '';
+      warnEl.classList.remove('show'); barsEl.innerHTML = '';
+      setStatus('Recognizing…'); btn.disabled = true;
+      const formData = new FormData(); formData.append('file', file);
       try {
         const res = await fetch('/upload', { method: 'POST', body: formData });
         const data = await res.json();
-        if (!res.ok) throw new Error(data.error || '识别失败');
-
+        if (!res.ok) throw new Error(data.error || 'Recognition failed');
         showImage(data.preview);
+        if (data.gradcam) showCam(data.gradcam);
         nameEl.textContent = data.result;
-        confEl.textContent = `置信度  ${(data.confidence * 100).toFixed(1)}%`;
+        confEl.textContent = `Confidence  ${(data.confidence*100).toFixed(1)}%`;
         descEl.textContent = data.description || DESC_MAP[data.result] || '';
-        setStatus('识别完成');
-
+        renderBars(data.topk || []);
+        if (data.uncertain) { warnEl.textContent = '⚠ ' + data.message; warnEl.classList.add('show'); }
+        else { warnEl.classList.remove('show'); }
+        setStatus('Done');
         const hist = loadHistory();
         hist.unshift({
-          id: uid(),
-          result: data.result,
-          confidence: data.confidence,
-          description: data.description,
-          preview: data.preview,
-          time: new Date().toLocaleString(),
+          id: uid(), result: data.result, confidence: data.confidence, description: data.description,
+          preview: data.preview, gradcam: data.gradcam, topk: data.topk, uncertain: data.uncertain,
+          message: data.message, time: new Date().toLocaleString(),
         });
-        saveHistory(hist);
-        renderHistory();
+        saveHistory(hist); renderHistory();
       } catch (err) {
-        nameEl.textContent = '失败';
-        confEl.textContent = '';
-        descEl.textContent = '';
-        setStatus(err.message || '识别失败', true);
-      } finally {
-        btn.disabled = false;
-      }
+        nameEl.textContent = 'Failed'; setStatus(err.message || 'Recognition failed', true);
+      } finally { btn.disabled = false; }
     }
 
     function pick() { fileInput.click(); }
@@ -428,21 +296,10 @@
     btnDelSelected.addEventListener('click', deleteSelected);
     btnDelAll.addEventListener('click', deleteAll);
     stage.addEventListener('click', pick);
-    fileInput.addEventListener('change', () => {
-      if (fileInput.files[0]) recognize(fileInput.files[0]);
-    });
-
-    ;['dragenter', 'dragover'].forEach(evt => {
-      stage.addEventListener(evt, (e) => { e.preventDefault(); stage.classList.add('dragover'); });
-    });
-    ;['dragleave', 'drop'].forEach(evt => {
-      stage.addEventListener(evt, (e) => { e.preventDefault(); stage.classList.remove('dragover'); });
-    });
-    stage.addEventListener('drop', (e) => {
-      const file = e.dataTransfer.files && e.dataTransfer.files[0];
-      if (file) recognize(file);
-    });
-
+    fileInput.addEventListener('change', () => { if (fileInput.files[0]) recognize(fileInput.files[0]); });
+    ;['dragenter','dragover'].forEach(evt => stage.addEventListener(evt, e => { e.preventDefault(); stage.classList.add('dragover'); }));
+    ;['dragleave','drop'].forEach(evt => stage.addEventListener(evt, e => { e.preventDefault(); stage.classList.remove('dragover'); }));
+    stage.addEventListener('drop', e => { const f = e.dataTransfer.files && e.dataTransfer.files[0]; if (f) recognize(f); });
     renderHistory();
   </script>
 </body>

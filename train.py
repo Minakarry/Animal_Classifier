@@ -1,7 +1,10 @@
-"""使用 ResNet18 在 Animals-10 上微调训练。"""
+"""Fine-tune ResNet18 on Animals-10 (with seed, early stopping, metrics dump)."""
 from __future__ import annotations
 
+import argparse
+import json
 import time
+from datetime import datetime
 
 import torch
 from torch import nn
@@ -11,14 +14,17 @@ from torchvision.models import ResNet18_Weights, resnet18
 
 from config import (
     BATCH_SIZE,
+    EARLY_STOP_PATIENCE,
     EPOCHS,
     LEARNING_RATE,
     MODEL_PATH,
     NUM_CLASSES,
     OUTPUT_DIR,
+    SEED,
     TEST_LIST,
     TRAIN_LIST,
 )
+from seed_utils import set_seed
 from utils import LoadData
 
 
@@ -59,13 +65,21 @@ def validate(dataloader, model, loss_fn, device):
 
     avg_loss = total_loss / max(len(dataloader), 1)
     accuracy = correct / max(size, 1)
-    print(
-        f"Val Accuracy: {(100 * accuracy):>0.1f}%, Avg loss: {avg_loss:>8f}\n"
-    )
+    print(f"Val Accuracy: {(100 * accuracy):>0.1f}%, Avg loss: {avg_loss:>8f}\n")
     return accuracy, avg_loss
 
 
 def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--epochs", type=int, default=EPOCHS)
+    parser.add_argument("--batch-size", type=int, default=BATCH_SIZE)
+    parser.add_argument("--lr", type=float, default=LEARNING_RATE)
+    parser.add_argument("--seed", type=int, default=SEED)
+    parser.add_argument("--no-pretrained", action="store_true")
+    parser.add_argument("--patience", type=int, default=EARLY_STOP_PATIENCE)
+    args = parser.parse_args()
+
+    set_seed(args.seed)
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
     writer = SummaryWriter("logs")
 
@@ -73,75 +87,96 @@ def main():
     valid_data = LoadData(str(TEST_LIST), False)
     train_loader = DataLoader(
         train_data,
-        batch_size=BATCH_SIZE,
+        batch_size=args.batch_size,
         shuffle=True,
         pin_memory=torch.cuda.is_available(),
         num_workers=0,
     )
     valid_loader = DataLoader(
         valid_data,
-        batch_size=BATCH_SIZE,
+        batch_size=args.batch_size,
         shuffle=False,
         pin_memory=torch.cuda.is_available(),
         num_workers=0,
     )
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
-    print(f"Using {device} device | classes={NUM_CLASSES}")
+    print(f"Using {device} | classes={NUM_CLASSES} | seed={args.seed}")
 
-    model = resnet18(weights=ResNet18_Weights.DEFAULT)
+    weights = None if args.no_pretrained else ResNet18_Weights.DEFAULT
+    model = resnet18(weights=weights)
     model.fc = nn.Linear(model.fc.in_features, NUM_CLASSES)
     nn.init.xavier_normal_(model.fc.weight)
     model = model.to(device)
 
-    backbone_params = [
-        p for n, p in model.named_parameters()
-        if not n.startswith("fc.")
-    ]
-    head_params = [
-        p for n, p in model.named_parameters()
-        if n.startswith("fc.")
-    ]
+    backbone_params = [p for n, p in model.named_parameters() if not n.startswith("fc.")]
+    head_params = [p for n, p in model.named_parameters() if n.startswith("fc.")]
 
     loss_fn = nn.CrossEntropyLoss()
     optimizer = torch.optim.Adam(
         [
-            {"params": backbone_params, "lr": LEARNING_RATE},
-            {"params": head_params, "lr": LEARNING_RATE * 10},
+            {"params": backbone_params, "lr": args.lr},
+            {"params": head_params, "lr": args.lr * 10},
         ]
     )
-    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=EPOCHS)
+    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=args.epochs)
 
     best_acc = -1.0
-    for epoch in range(EPOCHS):
-        print(f"Epoch {epoch + 1}/{EPOCHS}\n-------------------------------")
+    bad_epochs = 0
+    history = []
+    for t in range(args.epochs):
+        print(f"Epoch {t + 1}/{args.epochs}\n-------------------------------")
         t0 = time.time()
-        train_loss = train_one_epoch(train_loader, model, loss_fn, optimizer, device)
-        print(f"train time: {time.time() - t0:.1f}s | train_loss={train_loss:.6f}")
+        avg_loss = train_one_epoch(train_loader, model, loss_fn, optimizer, device)
+        print(f"train time: {time.time() - t0:.1f}s | train_loss={avg_loss:.6f}")
 
         val_acc, val_loss = validate(valid_loader, model, loss_fn, device)
-        writer.add_scalar("avg_train_loss", train_loss, epoch)
-        writer.add_scalar("val_accuracy", val_acc, epoch)
-        writer.add_scalar("val_loss", val_loss, epoch)
+        writer.add_scalar("avg_train_loss", avg_loss, t)
+        writer.add_scalar("val_accuracy", val_acc, t)
+        writer.add_scalar("val_loss", val_loss, t)
+        history.append({
+            "epoch": t + 1,
+            "train_loss": avg_loss,
+            "val_loss": val_loss,
+            "val_acc": val_acc,
+        })
 
         torch.save(model.state_dict(), OUTPUT_DIR / "resnet18_last.pth")
-        if (epoch + 1) % 5 == 0:
-            torch.save(
-                model.state_dict(),
-                OUTPUT_DIR / f"resnet18_epoch{epoch + 1}.pth",
-            )
+        if (t + 1) % 5 == 0:
+            torch.save(model.state_dict(), OUTPUT_DIR / f"resnet18_epoch{t + 1}.pth")
 
         if val_acc > best_acc:
             best_acc = val_acc
+            bad_epochs = 0
             torch.save(model.state_dict(), MODEL_PATH)
-            # 兼容旧文件名
             torch.save(model.state_dict(), OUTPUT_DIR / "resnet18_e_best.pth")
-            print(f"保存最佳模型: {MODEL_PATH} (acc={best_acc:.4f})")
+            print(f"Saved best model: {MODEL_PATH} (acc={best_acc:.4f})")
+        else:
+            bad_epochs += 1
+            if bad_epochs >= args.patience:
+                print(f"Early stopping at epoch {t + 1}")
+                break
 
         scheduler.step()
 
     writer.close()
-    print(f"训练结束，最佳验证准确率: {best_acc:.4f}")
+    run_info = {
+        "time": datetime.now().isoformat(timespec="seconds"),
+        "seed": args.seed,
+        "epochs_requested": args.epochs,
+        "epochs_ran": len(history),
+        "batch_size": args.batch_size,
+        "lr": args.lr,
+        "pretrained": not args.no_pretrained,
+        "best_val_accuracy": best_acc,
+        "history": history,
+    }
+    (OUTPUT_DIR / "train_run.json").write_text(
+        json.dumps(run_info, ensure_ascii=False, indent=2),
+        encoding="utf-8",
+    )
+    print(f"Training finished. Best val acc: {best_acc:.4f}")
+    print("Next: python evaluate.py")
 
 
 if __name__ == "__main__":
